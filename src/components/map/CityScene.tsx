@@ -8,6 +8,8 @@ interface CitySceneProps {
   points: MonitorPoint[];
   selectedPoint: string | null;
   onPointClick: (id: string) => void;
+  focusedPosition?: { lat: number; lng: number } | null;
+  focusedEventId?: string | null;
 }
 
 function Building({ position, size, color }: { position: [number, number, number]; size: [number, number, number]; color: string }) {
@@ -90,6 +92,58 @@ function MonitorPointMarker({
   );
 }
 
+function FocusedEventMarker({
+  position,
+  eventId,
+}: {
+  position: { lat: number; lng: number };
+  eventId: string;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.position.y = 4 + Math.sin(state.clock.elapsedTime * 3) * 0.5;
+    }
+    if (ringRef.current) {
+      ringRef.current.rotation.y += 0.02;
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.2;
+      ringRef.current.scale.set(scale, 1, scale);
+    }
+  });
+
+  return (
+    <group position={[position.lng * 10 - 121.5, 0, position.lat * 10 - 31.2]}>
+      <mesh ref={meshRef}>
+        <octahedronGeometry args={[0.6, 0]} />
+        <meshStandardMaterial color="#ff6b6b" emissive="#ff6b6b" emissiveIntensity={1.5} />
+      </mesh>
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
+        <ringGeometry args={[1.5, 2, 32]} />
+        <meshBasicMaterial color="#ff6b6b" transparent opacity={0.5} />
+      </mesh>
+      <Html distanceFactor={15} position={[0, 3, 0]}>
+        <div
+          style={{
+            background: 'rgba(255, 107, 107, 0.95)',
+            border: '2px solid #ff4757',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            color: 'white',
+            fontSize: '12px',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 0 30px rgba(255, 71, 87, 0.5)',
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>📍 事件位置</div>
+          <div style={{ fontSize: '10px', opacity: 0.9 }}>ID: {eventId}</div>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 function City() {
   const buildings = useMemo(() => {
     const result = [];
@@ -138,7 +192,7 @@ function Lights() {
   );
 }
 
-export default function CityScene({ points, selectedPoint, onPointClick }: CitySceneProps) {
+export default function CityScene({ points, selectedPoint, onPointClick, focusedPosition, focusedEventId }: CitySceneProps) {
   return (
     <Canvas shadows>
       <PerspectiveCamera makeDefault position={[20, 15, 20]} fov={60} />
@@ -160,6 +214,10 @@ export default function CityScene({ points, selectedPoint, onPointClick }: CityS
           onClick={() => onPointClick(point.id)}
         />
       ))}
+
+      {focusedPosition && focusedEventId && (
+        <FocusedEventMarker position={focusedPosition} eventId={focusedEventId} />
+      )}
     </Canvas>
   );
 }

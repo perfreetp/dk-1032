@@ -1,16 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FileText, Download, History, BookOpen, Calendar, BarChart3, Settings } from 'lucide-react';
 import Card, { CardHeader, CardContent } from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { streets, emergencyPlans, events } from '../../services/mockData';
+import { streets, emergencyPlans, events, carouselConfigs as initialCarouselConfigs } from '../../services/mockData';
 import { useEventStore } from '../../stores/useEventStore';
 import HistoricalPlayback from '../../components/common/HistoricalPlayback';
 import CarouselConfigPanel from '../../components/common/CarouselConfigPanel';
+import Carousel from '../../components/common/Carousel';
 import ReactECharts from 'echarts-for-react';
+import { CarouselConfig } from '../../types';
 
 export default function Report() {
   const [showPlayback, setShowPlayback] = useState(false);
   const [showCarouselConfig, setShowCarouselConfig] = useState(false);
+  const [showCarousel, setShowCarousel] = useState(false);
   const [exportDate, setExportDate] = useState(new Date().toISOString().slice(0, 10));
   const [customFilters, setCustomFilters] = useState({
     street: '全部街道',
@@ -21,7 +24,15 @@ export default function Report() {
   });
 
   const { events: storeEvents } = useEventStore();
-  const allEvents = [...events, ...storeEvents.filter(e => !events.find(oe => oe.id === e.id))];
+  const allEvents = useMemo(() => {
+    const merged = [...events];
+    storeEvents.forEach(e => {
+      if (!merged.find(me => me.id === e.id)) {
+        merged.push(e);
+      }
+    });
+    return merged;
+  }, [storeEvents]);
 
   const filteredEvents = useMemo(() => {
     return allEvents.filter((event) => {
@@ -79,6 +90,11 @@ export default function Report() {
         : 0,
     };
   }, [filteredEvents]);
+
+  const handlePlayCarousel = (config: CarouselConfig) => {
+    setShowCarouselConfig(false);
+    setShowCarousel(true);
+  };
 
   const dailyReportOption = {
     tooltip: {
@@ -532,7 +548,8 @@ ${filteredEvents.length > 20 ? `\n... 共 ${filteredEvents.length} 个事件` : 
       </Card>
 
       {showPlayback && <HistoricalPlayback onClose={() => setShowPlayback(false)} />}
-      {showCarouselConfig && <CarouselConfigPanel onClose={() => setShowCarouselConfig(false)} />}
+      {showCarouselConfig && <CarouselConfigPanel onClose={() => setShowCarouselConfig(false)} onPlay={handlePlayCarousel} />}
+      {showCarousel && <Carousel onClose={() => setShowCarousel(false)} />}
     </div>
   );
 }

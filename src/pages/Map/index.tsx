@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Layers, Star, Camera, Eye, EyeOff, Monitor } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
@@ -7,11 +7,13 @@ import Button from '../../components/common/Button';
 import CityScene from '../../components/map/CityScene';
 import ScreenshotAnnotation from '../../components/common/ScreenshotAnnotation';
 import PointDetailPanel from '../../components/common/PointDetailPanel';
-import { favoriteAreas, monitorPoints, trafficData, pipelineData, events } from '../../services/mockData';
+import { favoriteAreas, monitorPoints, trafficData, pipelineData } from '../../services/mockData';
 import { useMapStore } from '../../stores/useMapStore';
 import { useEventStore } from '../../stores/useEventStore';
 
 export default function Map() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeLayers, setActiveLayers] = useState({
     traffic: true,
     pipeline: true,
@@ -21,10 +23,31 @@ export default function Map() {
   const [favorites, setFavorites] = useState(favoriteAreas);
   const [showScreenshot, setShowScreenshot] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
 
-  const { selectedPointId, selectedPoint, setSelectedPoint } = useMapStore();
-  const { setMapFocusPosition } = useEventStore();
+  const { selectedPointId, selectedPoint, setSelectedPoint, focusedEventPosition } = useMapStore();
+  const { events, mapFocusPosition, setMapFocusPosition, focusedEventId, setFocusedEventId } = useEventStore();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const eventId = params.get('event');
+    if (eventId) {
+      const event = events.find((e) => e.id === eventId);
+      if (event) {
+        setMapFocusPosition(event.position);
+        setFocusedEventId(event.id);
+        navigate(location.pathname, { replace: true });
+      }
+    }
+  }, [location.search, events, navigate, location.pathname, setMapFocusPosition, setFocusedEventId]);
+
+  useEffect(() => {
+    if (focusedEventId) {
+      const event = events.find((e) => e.id === focusedEventId);
+      if (event) {
+        setMapFocusPosition(event.position);
+      }
+    }
+  }, [focusedEventId, events, setMapFocusPosition]);
 
   const toggleLayer = (layer: keyof typeof activeLayers) => {
     setActiveLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
@@ -75,6 +98,8 @@ export default function Map() {
           points={filteredPoints}
           selectedPoint={selectedPointId}
           onPointClick={handlePointClick}
+          focusedPosition={mapFocusPosition}
+          focusedEventId={focusedEventId}
         />
 
         {selectedPoint && (
@@ -118,6 +143,13 @@ export default function Map() {
             <p>🔍 滚轮 - 缩放地图</p>
             <p>点击标记点 - 查看详情</p>
           </div>
+          {focusedEventPosition && (
+            <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+              <p className="text-xs text-[var(--color-accent)]">
+                📍 正在聚焦事件位置
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

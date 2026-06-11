@@ -7,6 +7,7 @@ import { CarouselConfig } from '../../types';
 
 interface CarouselConfigPanelProps {
   onClose: () => void;
+  onPlay?: (config: CarouselConfig) => void;
 }
 
 const allPages = [
@@ -19,8 +20,18 @@ const allPages = [
   { path: '/report', name: '报表', icon: '📈' },
 ];
 
-export default function CarouselConfigPanel({ onClose }: CarouselConfigPanelProps) {
-  const [configs, setConfigs] = useState<CarouselConfig[]>(initialConfigs);
+export default function CarouselConfigPanel({ onClose, onPlay }: CarouselConfigPanelProps) {
+  const [configs, setConfigs] = useState<CarouselConfig[]>(() => {
+    const saved = localStorage.getItem('carouselConfigs');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return initialConfigs;
+      }
+    }
+    return initialConfigs;
+  });
   const [selectedConfig, setSelectedConfig] = useState<CarouselConfig | null>(null);
   const [editingConfig, setEditingConfig] = useState<CarouselConfig | null>(null);
   const [newConfigName, setNewConfigName] = useState('');
@@ -38,14 +49,18 @@ export default function CarouselConfigPanel({ onClose }: CarouselConfigPanelProp
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
-    setConfigs([...configs, newConfig]);
+    const updatedConfigs = [...configs, newConfig];
+    setConfigs(updatedConfigs);
+    localStorage.setItem('carouselConfigs', JSON.stringify(updatedConfigs));
     setNewConfigName('');
     setNewConfigPages([]);
     setNewConfigInterval(10);
   };
 
   const handleDeleteConfig = (configId: string) => {
-    setConfigs(configs.filter((c) => c.id !== configId));
+    const updatedConfigs = configs.filter((c) => c.id !== configId);
+    setConfigs(updatedConfigs);
+    localStorage.setItem('carouselConfigs', JSON.stringify(updatedConfigs));
     if (selectedConfig?.id === configId) {
       setSelectedConfig(null);
     }
@@ -76,13 +91,17 @@ export default function CarouselConfigPanel({ onClose }: CarouselConfigPanelProp
   const handleSaveConfig = () => {
     if (!editingConfig) return;
 
-    setConfigs(configs.map((c) => (c.id === editingConfig.id ? editingConfig : c)));
+    const updatedConfigs = configs.map((c) => (c.id === editingConfig.id ? editingConfig : c));
+    setConfigs(updatedConfigs);
+    localStorage.setItem('carouselConfigs', JSON.stringify(updatedConfigs));
     setEditingConfig(null);
   };
 
   const handleApplyConfig = (config: CarouselConfig) => {
     localStorage.setItem('activeCarouselConfig', JSON.stringify(config));
-    alert(`已应用轮播方案: ${config.name}\n页面: ${config.pages.length}个\n间隔: ${config.interval}秒`);
+    if (onPlay) {
+      onPlay(config);
+    }
   };
 
   return (
