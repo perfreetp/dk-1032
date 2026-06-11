@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { FileText, Download, History, BookOpen, Calendar, BarChart3, Settings } from 'lucide-react';
 import Card, { CardHeader, CardContent } from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { streets, emergencyPlans, events, carouselConfigs as initialCarouselConfigs } from '../../services/mockData';
+import { streets, emergencyPlans, carouselConfigs as initialCarouselConfigs } from '../../services/mockData';
 import { useEventStore } from '../../stores/useEventStore';
 import HistoricalPlayback from '../../components/common/HistoricalPlayback';
 import CarouselConfigPanel from '../../components/common/CarouselConfigPanel';
@@ -23,16 +23,7 @@ export default function Report() {
     endDate: '',
   });
 
-  const { events: storeEvents } = useEventStore();
-  const allEvents = useMemo(() => {
-    const merged = [...events];
-    storeEvents.forEach(e => {
-      if (!merged.find(me => me.id === e.id)) {
-        merged.push(e);
-      }
-    });
-    return merged;
-  }, [storeEvents]);
+  const { events: allEvents } = useEventStore();
 
   const filteredEvents = useMemo(() => {
     return allEvents.filter((event) => {

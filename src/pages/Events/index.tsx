@@ -29,7 +29,7 @@ export default function Events() {
     estimatedTime: '',
   });
 
-  const { events, addEventRecord, updateEventStatus, createDispatch, setMapFocusPosition } = useEventStore();
+  const { events, addEventRecord, updateEventStatus, createDispatch, setMapFocusPosition, setFocusedEventId } = useEventStore();
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
@@ -118,7 +118,8 @@ export default function Events() {
 
   const handleLocateOnMap = (event: Event) => {
     setMapFocusPosition(event.position);
-    navigate('/map');
+    setFocusedEventId(event.id);
+    navigate(`/map?event=${event.id}`);
   };
 
   const getTimeoutStatus = (event: Event) => {

@@ -10,6 +10,7 @@ import PointDetailPanel from '../../components/common/PointDetailPanel';
 import { favoriteAreas, monitorPoints, trafficData, pipelineData } from '../../services/mockData';
 import { useMapStore } from '../../stores/useMapStore';
 import { useEventStore } from '../../stores/useEventStore';
+import { Event } from '../../types';
 
 export default function Map() {
   const navigate = useNavigate();
@@ -35,19 +36,14 @@ export default function Map() {
       if (event) {
         setMapFocusPosition(event.position);
         setFocusedEventId(event.id);
-        navigate(location.pathname, { replace: true });
       }
-    }
-  }, [location.search, events, navigate, location.pathname, setMapFocusPosition, setFocusedEventId]);
-
-  useEffect(() => {
-    if (focusedEventId) {
+    } else if (focusedEventId) {
       const event = events.find((e) => e.id === focusedEventId);
       if (event) {
         setMapFocusPosition(event.position);
       }
     }
-  }, [focusedEventId, events, setMapFocusPosition]);
+  }, [location.search, events, setMapFocusPosition, setFocusedEventId, focusedEventId]);
 
   const toggleLayer = (layer: keyof typeof activeLayers) => {
     setActiveLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
@@ -86,8 +82,9 @@ export default function Map() {
     navigate(`/events?highlight=${eventId}`);
   };
 
-  const handleLocateEvent = (event: any) => {
+  const handleLocateEvent = (event: Event) => {
     setMapFocusPosition(event.position);
+    setFocusedEventId(event.id);
     setSelectedPoint(null);
   };
 
