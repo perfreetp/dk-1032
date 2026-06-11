@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { FileText, Download, History, BookOpen, Calendar } from 'lucide-react';
 import Card, { CardHeader, CardContent } from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { emergencyPlans } from '../../services/mockData';
+import { emergencyPlans, events } from '../../services/mockData';
+import HistoricalPlayback from '../../components/common/HistoricalPlayback';
 import ReactECharts from 'echarts-for-react';
 
 export default function Report() {
+  const [showPlayback, setShowPlayback] = useState(false);
+  const [exportDate, setExportDate] = useState(new Date().toISOString().slice(0, 10));
+
   const dailyReportOption = {
     tooltip: {
       trigger: 'axis',
@@ -87,6 +92,65 @@ export default function Report() {
     ],
   };
 
+  const generateDailyReport = () => {
+    const date = new Date(exportDate);
+    const dayEvents = events.filter((e) => {
+      const eventDate = new Date(e.createTime);
+      return eventDate.toDateString() === date.toDateString();
+    });
+
+    const reportContent = `
+城市运行日报
+日期: ${date.toLocaleDateString('zh-CN')}
+生成时间: ${new Date().toLocaleString('zh-CN')}
+========================================
+
+一、事件统计
+----------------------------------------
+1. 今日新增事件: ${dayEvents.length || 3} 个
+2. 已处置事件: ${dayEvents.filter((e) => e.status === 'resolved').length || 2} 个
+3. 处理中事件: ${dayEvents.filter((e) => e.status === 'processing').length || 1} 个
+4. 待处理事件: ${dayEvents.filter((e) => e.status === 'pending').length || 0} 个
+
+二、事件类型分布
+----------------------------------------
+- 交通类: ${Math.floor(Math.random() * 10) + 5} 个
+- 管网类: ${Math.floor(Math.random() * 5) + 3} 个
+- 环境类: ${Math.floor(Math.random() * 5) + 2} 个
+- 安全类: ${Math.floor(Math.random() * 3) + 1} 个
+
+三、核心指标
+----------------------------------------
+- 交通流量: ${Math.floor(Math.random() * 5000) + 10000} 辆/小时
+- 管网压力: ${(Math.random() * 0.3 + 0.3).toFixed(2)} MPa
+- 空气质量指数: ${Math.floor(Math.random() * 40) + 40} AQI
+- 监控在线率: ${(Math.random() * 5 + 95).toFixed(1)}%
+
+四、重点关注
+----------------------------------------
+1. 西藏路积水点持续监测中
+2. 延安路交通疏导正常
+3. 环境指标整体良好
+
+五、明日工作重点
+----------------------------------------
+1. 继续关注天气变化,做好防汛准备
+2. 加强早晚高峰交通疏导
+3. 持续监控重点区域管网状态
+
+值班人员: 张伟
+审核人员: 李明
+`;
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `日报_${date.toISOString().slice(0, 10)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -97,10 +161,18 @@ export default function Report() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button icon={<Download className="w-4 h-4" />} variant="primary">
+          <Button
+            icon={<Download className="w-4 h-4" />}
+            variant="primary"
+            onClick={generateDailyReport}
+          >
             导出日报
           </Button>
-          <Button icon={<History className="w-4 h-4" />} variant="secondary">
+          <Button
+            icon={<History className="w-4 h-4" />}
+            variant="secondary"
+            onClick={() => setShowPlayback(true)}
+          >
             历史回放
           </Button>
         </div>
@@ -162,9 +234,11 @@ export default function Report() {
             <div className="flex gap-2">
               <input
                 type="date"
+                value={exportDate}
+                onChange={(e) => setExportDate(e.target.value)}
                 className="px-4 py-2 bg-[var(--color-bg-dark)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-accent)]"
               />
-              <Button variant="primary" icon={<Download className="w-4 h-4" />}>
+              <Button variant="primary" icon={<Download className="w-4 h-4" />} onClick={generateDailyReport}>
                 生成
               </Button>
             </div>
@@ -172,30 +246,32 @@ export default function Report() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-[var(--color-bg-dark)] rounded-lg">
-              <p className="text-sm text-[var(--color-text-secondary)] mb-2">2026-06-11 日报</p>
-              <p className="text-xs text-[var(--color-text-secondary)] mb-3">共12个事件,11个已处置</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost">查看</Button>
-                <Button size="sm" variant="ghost" icon={<Download className="w-3 h-3" />}>下载</Button>
+            {[
+              { date: '2026-06-11', events: 12, resolved: 11 },
+              { date: '2026-06-10', events: 8, resolved: 8 },
+              { date: '2026-06-09', events: 15, resolved: 14 },
+            ].map((report, idx) => (
+              <div key={idx} className="p-4 bg-[var(--color-bg-dark)] rounded-lg">
+                <p className="text-sm text-[var(--color-text-secondary)] mb-2">{report.date} 日报</p>
+                <p className="text-xs text-[var(--color-text-secondary)] mb-3">
+                  共{report.events}个事件,{report.resolved}个已处置
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost">查看</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<Download className="w-3 h-3" />}
+                    onClick={() => {
+                      setExportDate(report.date);
+                      setTimeout(generateDailyReport, 100);
+                    }}
+                  >
+                    下载
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="p-4 bg-[var(--color-bg-dark)] rounded-lg">
-              <p className="text-sm text-[var(--color-text-secondary)] mb-2">2026-06-10 日报</p>
-              <p className="text-xs text-[var(--color-text-secondary)] mb-3">共8个事件,8个已处置</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost">查看</Button>
-                <Button size="sm" variant="ghost" icon={<Download className="w-3 h-3" />}>下载</Button>
-              </div>
-            </div>
-            <div className="p-4 bg-[var(--color-bg-dark)] rounded-lg">
-              <p className="text-sm text-[var(--color-text-secondary)] mb-2">2026-06-09 日报</p>
-              <p className="text-xs text-[var(--color-text-secondary)] mb-3">共15个事件,14个已处置</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost">查看</Button>
-                <Button size="sm" variant="ghost" icon={<Download className="w-3 h-3" />}>下载</Button>
-              </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -243,6 +319,8 @@ export default function Report() {
           </div>
         </CardContent>
       </Card>
+
+      {showPlayback && <HistoricalPlayback onClose={() => setShowPlayback(false)} />}
     </div>
   );
 }

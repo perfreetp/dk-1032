@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Layers, Star, Camera, Eye, EyeOff } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Layers, Star, Camera, Eye, EyeOff, Monitor } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
-import { favoriteAreas, monitorPoints, trafficData, pipelineData, environmentData } from '../../services/mockData';
+import CityScene from '../../components/map/CityScene';
+import ScreenshotAnnotation from '../../components/common/ScreenshotAnnotation';
+import { favoriteAreas, monitorPoints, trafficData, pipelineData } from '../../services/mockData';
 
 export default function Map() {
   const [activeLayers, setActiveLayers] = useState({
@@ -14,6 +16,8 @@ export default function Map() {
   });
   const [favorites, setFavorites] = useState(favoriteAreas);
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
+  const [showScreenshot, setShowScreenshot] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleLayer = (layer: keyof typeof activeLayers) => {
     setActiveLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
@@ -28,61 +32,13 @@ export default function Map() {
   });
 
   return (
-    <div className="h-full flex gap-6 animate-fade-in">
-      <div className="flex-1 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] rounded-lg overflow-hidden">
-          <div className="absolute inset-0 opacity-30">
-            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,212,255,0.1)" strokeWidth="1" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-          </div>
-          
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="text-center">
-              <div className="text-8xl font-bold text-[var(--color-accent)] opacity-20 mb-2">3D</div>
-              <p className="text-[var(--color-text-secondary)]">三维地图展示区域</p>
-              <p className="text-sm text-[var(--color-text-secondary)] mt-2">
-                使用 Three.js 渲染三维城市模型
-              </p>
-            </div>
-          </div>
-
-          {filteredPoints.map((point, index) => (
-            <div
-              key={point.id}
-              className={`
-                absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer
-                transition-all duration-300 hover:scale-125
-                ${selectedPoint === point.id ? 'scale-125' : ''}
-              `}
-              style={{
-                left: `${20 + (index * 15)}%`,
-                top: `${30 + (index * 10)}%`,
-              }}
-              onClick={() => setSelectedPoint(point.id)}
-            >
-              <div className={`
-                w-4 h-4 rounded-full border-2 border-white shadow-lg
-                ${point.status === 'normal' ? 'bg-green-500' : ''}
-                ${point.status === 'warning' ? 'bg-yellow-500 animate-pulse' : ''}
-                ${point.status === 'error' ? 'bg-red-500 animate-pulse' : ''}
-                ${point.status === 'offline' ? 'bg-gray-500' : ''}
-              `}>
-                <div className="absolute inset-0 rounded-full animate-ping opacity-75 bg-inherit" />
-              </div>
-              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                <div className="bg-[var(--color-bg-card)] px-2 py-1 rounded text-xs shadow-lg">
-                  {point.name}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="h-full flex gap-6 animate-fade-in" ref={mapContainerRef}>
+      <div className="flex-1 relative rounded-lg overflow-hidden">
+        <CityScene
+          points={filteredPoints}
+          selectedPoint={selectedPoint}
+          onPointClick={setSelectedPoint}
+        />
 
         <div className="absolute bottom-6 left-6 bg-[var(--color-bg-card)] rounded-lg p-4 border border-[var(--color-border)]">
           <h3 className="text-sm font-semibold mb-3">图例</h3>
@@ -105,6 +61,16 @@ export default function Map() {
             </div>
           </div>
         </div>
+
+        <div className="absolute top-6 left-6 bg-[var(--color-bg-card)] rounded-lg p-4 border border-[var(--color-border)]">
+          <h3 className="text-sm font-semibold mb-2">操作提示</h3>
+          <div className="text-xs text-[var(--color-text-secondary)] space-y-1">
+            <p>🖱️ 左键拖拽 - 旋转视角</p>
+            <p>🖱️ 右键拖拽 - 平移视图</p>
+            <p>🔍 滚轮 - 缩放地图</p>
+            <p>点击标记点 - 查看详情</p>
+          </div>
+        </div>
       </div>
 
       <div className="w-80 space-y-4">
@@ -116,20 +82,38 @@ export default function Map() {
             </h3>
           </div>
           <div className="space-y-3">
-            {Object.entries(activeLayers).map(([key, value]) => (
+            {[
+              { key: 'traffic' as const, label: '交通监控', icon: '🚗' },
+              { key: 'pipeline' as const, label: '管网监测', icon: '🔧' },
+              { key: 'environment' as const, label: '环境监测', icon: '🌿' },
+              { key: 'video' as const, label: '视频监控', icon: '📹' },
+            ].map(({ key, label, icon }) => (
               <div key={key} className="flex items-center justify-between">
-                <span className="text-sm capitalize">{key === 'video' ? '视频监控' : key === 'traffic' ? '交通' : key === 'pipeline' ? '管网' : '环境'}</span>
+                <span className="text-sm flex items-center gap-2">
+                  <span>{icon}</span> {label}
+                </span>
                 <button
-                  onClick={() => toggleLayer(key as keyof typeof activeLayers)}
+                  onClick={() => toggleLayer(key)}
                   className={`
-                    p-2 rounded-lg transition-colors
-                    ${value ? 'bg-[var(--color-accent)] bg-opacity-20 text-[var(--color-accent)]' : 'bg-[var(--color-bg-dark)] text-[var(--color-text-secondary)]'}
+                    p-2 rounded-lg transition-colors flex items-center gap-1 text-xs
+                    ${activeLayers[key] ? 'bg-[var(--color-accent)] bg-opacity-20 text-[var(--color-accent)]' : 'bg-[var(--color-bg-dark)] text-[var(--color-text-secondary)]'}
                   `}
                 >
-                  {value ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  {activeLayers[key] ? (
+                    <>
+                      <Eye className="w-4 h-4" /> 显示
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-4 h-4" /> 隐藏
+                    </>
+                  )}
                 </button>
               </div>
             ))}
+          </div>
+          <div className="mt-3 p-2 bg-[var(--color-bg-dark)] rounded text-xs text-[var(--color-text-secondary)]">
+            当前可见点位: {filteredPoints.length} 个
           </div>
         </Card>
 
@@ -165,9 +149,16 @@ export default function Map() {
               截图标注
             </h3>
           </div>
-          <Button className="w-full" icon={<Camera className="w-4 h-4" />}>
-            截图
+          <Button
+            className="w-full"
+            icon={<Camera className="w-4 h-4" />}
+            onClick={() => setShowScreenshot(true)}
+          >
+            截取当前画面
           </Button>
+          <p className="text-xs text-[var(--color-text-secondary)] mt-2">
+            截取后可添加文字或图形标注并下载
+          </p>
         </Card>
 
         <Card className="p-4">
@@ -194,6 +185,13 @@ export default function Map() {
           </div>
         </Card>
       </div>
+
+      {showScreenshot && (
+        <ScreenshotAnnotation
+          targetRef={mapContainerRef}
+          onClose={() => setShowScreenshot(false)}
+        />
+      )}
     </div>
   );
 }

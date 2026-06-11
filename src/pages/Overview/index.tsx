@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Monitor } from 'lucide-react';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
 import { coreMetrics, updateCoreMetrics } from '../../services/mockData';
+import Carousel from '../../components/common/Carousel';
 
 interface MetricCardProps {
   title: string;
@@ -47,6 +49,7 @@ function MetricCard({ title, value, unit, trend, trendValue, icon, color }: Metr
 
 export default function Overview() {
   const [metrics, setMetrics] = useState(coreMetrics);
+  const [showCarousel, setShowCarousel] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -70,6 +73,15 @@ export default function Overview() {
           <span className="text-sm text-[var(--color-text-secondary)]">
             最后更新: {new Date().toLocaleTimeString()}
           </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Monitor className="w-4 h-4" />}
+            onClick={() => setShowCarousel(true)}
+            className="ml-4"
+          >
+            大屏轮播
+          </Button>
         </div>
       </div>
 
@@ -162,6 +174,8 @@ export default function Overview() {
           </div>
         </Card>
       </div>
+
+      {showCarousel && <Carousel onClose={() => setShowCarousel(false)} />}
     </div>
   );
 }

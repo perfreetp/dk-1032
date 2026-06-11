@@ -1,15 +1,24 @@
-import { useState } from 'react';
-import { Search, Filter, Clock, User, MapPin, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, Clock, User, MapPin, AlertCircle, Plus, Save } from 'lucide-react';
 import Card, { CardHeader, CardContent } from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
-import { events, streets } from '../../services/mockData';
+import { streets } from '../../services/mockData';
+import { useEventStore } from '../../stores/useEventStore';
+import { Event } from '../../types';
 
 export default function Events() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStreet, setSelectedStreet] = useState('全部街道');
   const [selectedType, setSelectedType] = useState('all');
-  const [selectedEvent, setSelectedEvent] = useState<typeof events[0] | null>(null);
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showProcessModal, setShowProcessModal] = useState(false);
+  const [processAction, setProcessAction] = useState('');
+  const [processRemark, setProcessRemark] = useState('');
+  const [processProgress, setProcessProgress] = useState(50);
+
+  const { events, addEventRecord, updateEventStatus } = useEventStore();
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
@@ -18,13 +27,56 @@ export default function Events() {
     const matchesStreet =
       selectedStreet === '全部街道' || event.street === selectedStreet;
     const matchesType = selectedType === 'all' || event.type === selectedType;
-    return matchesSearch && matchesStreet && matchesType;
+
+    let matchesDate = true;
+    if (dateRange.start || dateRange.end) {
+      const eventDate = new Date(event.createTime);
+      if (dateRange.start) {
+        matchesDate = matchesDate && eventDate >= new Date(dateRange.start);
+      }
+      if (dateRange.end) {
+        const endDate = new Date(dateRange.end);
+        endDate.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && eventDate <= endDate;
+      }
+    }
+
+    return matchesSearch && matchesStreet && matchesType && matchesDate;
   });
 
   const eventStats = {
     pending: events.filter((e) => e.status === 'pending').length,
     processing: events.filter((e) => e.status === 'processing').length,
     resolved: events.filter((e) => e.status === 'resolved').length,
+  };
+
+  useEffect(() => {
+    if (selectedEvent) {
+      const updatedEvent = events.find((e) => e.id === selectedEvent.id);
+      if (updatedEvent) {
+        setSelectedEvent(updatedEvent);
+      }
+    }
+  }, [events, selectedEvent?.id]);
+
+  const handleProcess = () => {
+    if (!selectedEvent || !processAction) return;
+
+    addEventRecord(selectedEvent.id, {
+      operator: '值班人员',
+      action: processAction,
+      remark: processRemark,
+    });
+
+    const newProgress = Math.min(processProgress, 100);
+    const newStatus: Event['status'] = newProgress === 100 ? 'resolved' : 'processing';
+
+    updateEventStatus(selectedEvent.id, newStatus, newProgress);
+
+    setShowProcessModal(false);
+    setProcessAction('');
+    setProcessRemark('');
+    setProcessProgress(50);
   };
 
   return (
@@ -54,8 +106,8 @@ export default function Events() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -89,8 +141,27 @@ export default function Events() {
                 <option value="safety">安全</option>
                 <option value="other">其他</option>
               </select>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                  className="px-3 py-2 bg-[var(--color-bg-dark)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-accent)]"
+                  placeholder="开始日期"
+                />
+                <span className="text-[var(--color-text-secondary)]">至</span>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                  className="px-3 py-2 bg-[var(--color-bg-dark)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-accent)]"
+                  placeholder="结束日期"
+                />
+              </div>
             </div>
-            <Button icon={<Filter className="w-4 h-4" />}>筛选</Button>
+            <Button icon={<Filter className="w-4 h-4" />}>
+              筛选 ({filteredEvents.length})
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -160,6 +231,12 @@ export default function Events() {
                 </div>
               </div>
             ))}
+            {filteredEvents.length === 0 && (
+              <div className="text-center py-12 text-[var(--color-text-secondary)]">
+                <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>没有找到符合条件的事件</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -176,7 +253,17 @@ export default function Events() {
                     <Badge status={selectedEvent.status} />
                   </div>
                 </div>
-                <Button variant="ghost" onClick={() => setSelectedEvent(null)}>关闭</Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    icon={<Plus className="w-4 h-4" />}
+                    onClick={() => setShowProcessModal(true)}
+                  >
+                    添加处置
+                  </Button>
+                  <Button variant="ghost" onClick={() => setSelectedEvent(null)}>关闭</Button>
+                </div>
               </div>
             </div>
             <div className="p-6 space-y-6">
@@ -221,7 +308,7 @@ export default function Events() {
                   <h3 className="text-sm font-semibold text-[var(--color-text-secondary)] mb-3">处置记录</h3>
                   <div className="space-y-3">
                     {selectedEvent.records.map((record) => (
-                      <div key={record.id} className="p-3 bg-[var(--color-bg-dark)] rounded-lg">
+                      <div key={record.id} className="p-3 bg-[var(--color-bg-dark)] rounded-lg border-l-4 border-[var(--color-accent)]">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-sm">{record.operator}</span>
                           <span className="text-xs text-[var(--color-text-secondary)]">{record.createTime}</span>
@@ -235,10 +322,72 @@ export default function Events() {
                   </div>
                 </div>
               )}
-              <div className="flex gap-3">
-                <Button variant="primary" className="flex-1">处理</Button>
-                <Button variant="secondary" className="flex-1">导出</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProcessModal && selectedEvent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-6" onClick={() => setShowProcessModal(false)}>
+          <div className="bg-[var(--color-bg-card)] rounded-lg max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-[var(--color-border)]">
+              <h2 className="text-lg font-bold">添加处置记录</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  处置动作 *
+                </label>
+                <input
+                  type="text"
+                  value={processAction}
+                  onChange={(e) => setProcessAction(e.target.value)}
+                  placeholder="例如: 现场核查、已联系维修人员等"
+                  className="w-full px-4 py-2 bg-[var(--color-bg-dark)] border border-[var(--color-border)] rounded-lg focus:outline-none focus:border-[var(--color-accent)]"
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  备注说明
+                </label>
+                <textarea
+                  value={processRemark}
+                  onChange={(e) => setProcessRemark(e.target.value)}
+                  placeholder="可选的详细说明..."
+                  rows={3}
+                  className="w-full px-4 py-2 bg-[var(--color-bg-dark)] border border-[var(--color-border)] rounded-lg resize-none focus:outline-none focus:border-[var(--color-accent)]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  处置进度
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={processProgress}
+                    onChange={(e) => setProcessProgress(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-mono w-12">{processProgress}%</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-[var(--color-border)] flex gap-3">
+              <Button variant="ghost" className="flex-1" onClick={() => setShowProcessModal(false)}>
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1"
+                icon={<Save className="w-4 h-4" />}
+                onClick={handleProcess}
+                disabled={!processAction}
+              >
+                保存
+              </Button>
             </div>
           </div>
         </div>
