@@ -9,6 +9,8 @@ import {
   CoreMetrics,
   FavoriteArea,
   EmergencyPlan,
+  Department,
+  CarouselConfig,
 } from '../types';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -25,6 +27,28 @@ export const monitorPoints: MonitorPoint[] = [
   { id: 'mp-3', name: '南京东路泵站', type: 'pipeline', position: { lat: 31.24, lng: 121.47 }, status: 'warning', data: { waterLevel: 2.5 }, lastUpdate: new Date().toISOString() },
   { id: 'mp-4', name: '外滩空气质量站', type: 'environment', position: { lat: 31.24, lng: 121.49 }, status: 'normal', data: { aqi: 58 }, lastUpdate: new Date().toISOString() },
   { id: 'mp-5', name: '西藏路积水点', type: 'pipeline', position: { lat: 31.23, lng: 121.46 }, status: 'error', data: { waterLevel: 0.8 }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-6', name: '延安路监控点', type: 'traffic', position: { lat: 31.22, lng: 121.46 }, status: 'error', data: { vehicleCount: 856 }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-7', name: '淮海路监控点', type: 'traffic', position: { lat: 31.22, lng: 121.45 }, status: 'warning', data: { vehicleCount: 1100 }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-8', name: '陆家嘴监控点', type: 'video', position: { lat: 31.24, lng: 121.51 }, status: 'normal', data: { cameraId: 'cam-002' }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-9', name: 'B区排水泵站', type: 'pipeline', position: { lat: 31.24, lng: 121.46 }, status: 'error', data: { waterLevel: 2.5 }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-10', name: 'C区排水泵站', type: 'pipeline', position: { lat: 31.25, lng: 121.48 }, status: 'normal', data: { waterLevel: 0.8 }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-11', name: '陆家嘴监测站', type: 'environment', position: { lat: 31.24, lng: 121.51 }, status: 'warning', data: { aqi: 72 }, lastUpdate: new Date().toISOString() },
+  { id: 'mp-12', name: '静安寺监测站', type: 'environment', position: { lat: 31.22, lng: 121.45 }, status: 'normal', data: { aqi: 48 }, lastUpdate: new Date().toISOString() },
+];
+
+export const departments: Department[] = [
+  { id: 'dept-1', name: '交警支队', icon: '🚗', contact: '李警官', phone: '021-12345678' },
+  { id: 'dept-2', name: '市政管理处', icon: '🔧', contact: '王处长', phone: '021-23456789' },
+  { id: 'dept-3', name: '排水养护中心', icon: '💧', contact: '张主任', phone: '021-34567890' },
+  { id: 'dept-4', name: '环境监测中心', icon: '🌿', contact: '陈站长', phone: '021-45678901' },
+  { id: 'dept-5', name: '应急管理局', icon: '🚨', contact: '刘局长', phone: '021-56789012' },
+  { id: 'dept-6', name: '城管执法大队', icon: '🏛️', contact: '赵队长', phone: '021-67890123' },
+];
+
+export const carouselConfigs: CarouselConfig[] = [
+  { id: 'carousel-1', name: '日常监控', pages: ['/', '/traffic', '/pipeline', '/environment'], interval: 10, createdAt: '2026-06-01' },
+  { id: 'carousel-2', name: '事件重点', pages: ['/events', '/map', '/events', '/report'], interval: 15, createdAt: '2026-06-05' },
+  { id: 'carousel-3', name: '全功能轮播', pages: ['/', '/map', '/traffic', '/pipeline', '/environment', '/events', '/report'], interval: 8, createdAt: '2026-06-10' },
 ];
 
 export const trafficData: TrafficData[] = [
@@ -71,6 +95,15 @@ export const events: Event[] = [
     updateTime: '2026-06-12 09:15:00',
     handler: '张伟',
     progress: 65,
+    dispatch: {
+      id: 'disp-1',
+      department: '交警支队',
+      responsiblePerson: '李警官',
+      estimatedTime: '2026-06-12 10:30:00',
+      status: 'processing',
+      isTimeout: false,
+      dispatchTime: '2026-06-12 08:35:00',
+    },
     records: [
       { id: 'rec-1', eventId: 'evt-1', operator: '张伟', action: '接单处理', remark: '已派交警前往现场', createTime: '2026-06-12 08:35:00' },
       { id: 'rec-2', eventId: 'evt-1', operator: '张伟', action: '现场处置', remark: '事故车辆已移至应急车道', createTime: '2026-06-12 09:00:00' },
@@ -84,11 +117,20 @@ export const events: Event[] = [
     street: '西藏路',
     position: { lat: 31.23, lng: 121.46 },
     description: '西藏路南段积水深度超过30cm,影响车辆通行',
-    status: 'pending',
+    status: 'processing',
     reporter: '管网监测系统',
     createTime: '2026-06-12 07:20:00',
-    updateTime: '2026-06-12 07:20:00',
-    progress: 0,
+    updateTime: '2026-06-12 07:25:00',
+    progress: 30,
+    dispatch: {
+      id: 'disp-2',
+      department: '排水养护中心',
+      responsiblePerson: '张主任',
+      estimatedTime: '2026-06-12 09:00:00',
+      status: 'processing',
+      isTimeout: true,
+      dispatchTime: '2026-06-12 07:25:00',
+    },
     records: [],
   },
   {
@@ -105,6 +147,16 @@ export const events: Event[] = [
     updateTime: '2026-06-12 01:15:00',
     handler: '李娜',
     progress: 100,
+    dispatch: {
+      id: 'disp-3',
+      department: '环境监测中心',
+      responsiblePerson: '陈站长',
+      estimatedTime: '2026-06-11 23:30:00',
+      actualTime: '2026-06-12 01:15:00',
+      status: 'completed',
+      isTimeout: false,
+      dispatchTime: '2026-06-11 22:35:00',
+    },
     records: [
       { id: 'rec-3', eventId: 'evt-3', operator: '李娜', action: '现场核查', remark: '确认为酒吧音响超标', createTime: '2026-06-11 23:00:00' },
       { id: 'rec-4', eventId: 'evt-3', operator: '李娜', action: '整改通知', remark: '已要求酒吧降低音量', createTime: '2026-06-12 00:30:00' },

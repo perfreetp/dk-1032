@@ -67,6 +67,34 @@ export interface Event {
   handler?: string;
   progress: number;
   records: EventRecord[];
+  dispatch?: Dispatch;
+}
+
+export interface Dispatch {
+  id: string;
+  department: string;
+  responsiblePerson: string;
+  estimatedTime: string;
+  actualTime?: string;
+  status: 'pending' | 'dispatched' | 'processing' | 'completed' | 'timeout';
+  isTimeout: boolean;
+  dispatchTime: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  icon: string;
+  contact: string;
+  phone: string;
+}
+
+export interface CarouselConfig {
+  id: string;
+  name: string;
+  pages: string[];
+  interval: number;
+  createdAt: string;
 }
 
 export interface EventRecord {

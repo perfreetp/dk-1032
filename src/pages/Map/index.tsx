@@ -1,11 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layers, Star, Camera, Eye, EyeOff, Monitor } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import CityScene from '../../components/map/CityScene';
 import ScreenshotAnnotation from '../../components/common/ScreenshotAnnotation';
-import { favoriteAreas, monitorPoints, trafficData, pipelineData } from '../../services/mockData';
+import PointDetailPanel from '../../components/common/PointDetailPanel';
+import { favoriteAreas, monitorPoints, trafficData, pipelineData, events } from '../../services/mockData';
+import { useMapStore } from '../../stores/useMapStore';
+import { useEventStore } from '../../stores/useEventStore';
 
 export default function Map() {
   const [activeLayers, setActiveLayers] = useState({
@@ -15,9 +19,12 @@ export default function Map() {
     video: true,
   });
   const [favorites, setFavorites] = useState(favoriteAreas);
-  const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
   const [showScreenshot, setShowScreenshot] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  const { selectedPointId, selectedPoint, setSelectedPoint } = useMapStore();
+  const { setMapFocusPosition } = useEventStore();
 
   const toggleLayer = (layer: keyof typeof activeLayers) => {
     setActiveLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
@@ -31,14 +38,55 @@ export default function Map() {
     return true;
   });
 
+  const nearbyPoints = selectedPoint
+    ? monitorPoints.filter((p) => {
+        if (p.id === selectedPoint.id) return false;
+        const latDiff = Math.abs(p.position.lat - selectedPoint.position.lat);
+        const lngDiff = Math.abs(p.position.lng - selectedPoint.position.lng);
+        return latDiff < 0.02 && lngDiff < 0.02;
+      })
+    : [];
+
+  const relatedEvents = selectedPoint
+    ? events.filter((e) => {
+        const latDiff = Math.abs(e.position.lat - selectedPoint.position.lat);
+        const lngDiff = Math.abs(e.position.lng - selectedPoint.position.lng);
+        return latDiff < 0.02 && lngDiff < 0.02;
+      })
+    : [];
+
+  const handlePointClick = (pointId: string) => {
+    setSelectedPoint(pointId);
+  };
+
+  const handleEventClick = (eventId: string) => {
+    navigate(`/events?highlight=${eventId}`);
+  };
+
+  const handleLocateEvent = (event: any) => {
+    setMapFocusPosition(event.position);
+    setSelectedPoint(null);
+  };
+
   return (
     <div className="h-full flex gap-6 animate-fade-in" ref={mapContainerRef}>
       <div className="flex-1 relative rounded-lg overflow-hidden">
         <CityScene
           points={filteredPoints}
-          selectedPoint={selectedPoint}
-          onPointClick={setSelectedPoint}
+          selectedPoint={selectedPointId}
+          onPointClick={handlePointClick}
         />
+
+        {selectedPoint && (
+          <PointDetailPanel
+            point={selectedPoint}
+            nearbyPoints={nearbyPoints}
+            relatedEvents={relatedEvents}
+            onEventClick={handleEventClick}
+            onLocateEvent={handleLocateEvent}
+            onClose={() => setSelectedPoint(null)}
+          />
+        )}
 
         <div className="absolute bottom-6 left-6 bg-[var(--color-bg-card)] rounded-lg p-4 border border-[var(--color-border)]">
           <h3 className="text-sm font-semibold mb-3">图例</h3>

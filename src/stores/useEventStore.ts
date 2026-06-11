@@ -1,19 +1,23 @@
 import { create } from 'zustand';
-import { Event, EventRecord } from '../types';
+import { Event, EventRecord, Dispatch } from '../types';
 import { events as initialEvents } from '../services/mockData';
 
 interface EventStore {
   events: Event[];
   selectedEventId: string | null;
+  mapFocusPosition: { lat: number; lng: number } | null;
   addEventRecord: (eventId: string, record: Omit<EventRecord, 'id' | 'eventId' | 'createTime'>) => void;
   updateEventStatus: (eventId: string, status: Event['status'], progress: number) => void;
+  createDispatch: (eventId: string, dispatch: Omit<Dispatch, 'id' | 'dispatchTime' | 'isTimeout'>) => void;
   setSelectedEvent: (eventId: string | null) => void;
+  setMapFocusPosition: (position: { lat: number; lng: number } | null) => void;
   getSelectedEvent: () => Event | undefined;
 }
 
 export const useEventStore = create<EventStore>((set, get) => ({
   events: initialEvents,
   selectedEventId: null,
+  mapFocusPosition: null,
 
   addEventRecord: (eventId, recordData) => {
     const newRecord: EventRecord = {
@@ -51,8 +55,34 @@ export const useEventStore = create<EventStore>((set, get) => ({
     }));
   },
 
+  createDispatch: (eventId, dispatchData) => {
+    const newDispatch: Dispatch = {
+      id: `disp-${Date.now()}`,
+      ...dispatchData,
+      isTimeout: false,
+      dispatchTime: new Date().toLocaleString('zh-CN'),
+    };
+
+    set((state) => ({
+      events: state.events.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              dispatch: newDispatch,
+              status: 'processing' as const,
+              updateTime: new Date().toISOString(),
+            }
+          : event
+      ),
+    }));
+  },
+
   setSelectedEvent: (eventId) => {
     set({ selectedEventId: eventId });
+  },
+
+  setMapFocusPosition: (position) => {
+    set({ mapFocusPosition: position });
   },
 
   getSelectedEvent: () => {
